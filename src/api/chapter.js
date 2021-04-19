@@ -35,7 +35,9 @@ export default {
   getChapterById(id){
     return request({
       url: `${path}/${id}`,
-      method: 'post'
+      method: 'get'
     })
   }
+
+  
 }

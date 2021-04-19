@@ -20,7 +20,7 @@
                 {{ chapter.title }}
 
                 <span class="acts">
-                    <el-button type="text">添加课时</el-button>
+                    <el-button type="text" @click="showVideoForm(chapter.id)">添加小节</el-button>
                     <el-button type="text" @click="editChapter(chapter.id)">编辑</el-button>
                     <el-button type="text" @click="removeChapter(chapter.id)">删除</el-button>
                 </span>
@@ -33,8 +33,8 @@
                     :key="video.id">
                     <p>{{ video.title }}
                         <span class="acts">
-                            <el-button type="text">编辑</el-button>
-                            <el-button type="text">删除</el-button>
+                            <el-button type="text" @click="editVideo(video.id)">编辑</el-button>
+                            <el-button type="text" @click="removeVideo(video.id)">删除</el-button>
                         </span>
                     </p>
                 </li>
@@ -57,20 +57,53 @@
         </div>
     </el-dialog>
 
+    <!-- 添加和修改小节表单 -->
+    <el-dialog :visible.sync="dialogVideoFormVisible" title="添加小节">
+        <el-form :model="video" label-width="120px">
+            <el-form-item label="小节标题">
+                <el-input v-model="video.title"/>
+            </el-form-item>
+            <el-form-item label="小节排序">
+                <el-input-number v-model="video.sort" :min="0" controls-position="right"/>
+            </el-form-item>
+        </el-form>
+        <div slot="footer" class="dialog-footer">
+            <el-button @click="dialogVideoFormVisible = false">取 消</el-button>
+            <el-button type="primary" @click="saveOrUpdateVideo">确 定</el-button>
+        </div>
+    </el-dialog>
+
     <div>
         <el-button @click="previous">上一步</el-button>
         <el-button :disabled="saveBtnDisabled" type="primary" @click="next">下一步</el-button>
     </div>
+
+    <!-- 分页 -->
+        <!-- <el-pagination
+        :current-page="page"
+        :page-size="limit"
+        :total="total"
+        style="padding: 30px 0; text-align: center;"
+        layout="total, prev, pager, next, jumper"
+        @current-change="init"
+        /> -->
+
   </div>
 </template>
 
 <script>
 import chapterApi from '@/api/chapter'
+import videoApi from '@/api/video'
 
 const chapterObj = {// 章节对象
         title: '',
         sort: 0
       }
+const videoObj = {// 章节对象
+  chapterId: '',
+  title: '',
+  sort: 0
+}
 
 export default {
   data() {
@@ -79,7 +112,11 @@ export default {
       courseId: '',
       chapterNestedList: [],
       dialogChapterFormVisible: false, //是否显示章节表单
-      chapter: chapterObj //章节对象
+      dialogVideoFormVisible: false,
+      chapter: {...chapterObj}, //章节对象
+      // limit: 10,
+      // page: 1
+      video: {...videoObj}
 
 
     }
@@ -112,8 +149,10 @@ export default {
     saveOrUpdate(){
       this.saveBtnDisabled = true
       if(!this.chapter.id){
+        console.log('准备添加')
         this.saveChapter()
       }else{
+        console.log('准备修改')
         this.updateChapter()
       }
     },
@@ -124,6 +163,8 @@ export default {
       console.log(this.chapter)
       chapterApi.save(this.chapter)
       .then(response => {
+        console.log('保存response：')
+        console.log(response)
         if(response.success === true){
           this.$message({
             type: 'success',
@@ -141,11 +182,13 @@ export default {
     },
 
     cleanState(){
+      console.log('清除表单数据')
       this.dialogChapterFormVisible = false// 如果保存成功则关闭对话框
-      this.fetchChapterNestedListByCourseId()// 刷新列表
-      this.chapter.title = ''// 重置章节标题
-      this.chapter.sort = 0// 重置章节标题
-      this.saveBtnDisabled = false
+      this.chapter = {...chapterObj}
+      this.video = {...videoObj}
+      this.dialogVideoFormVisible = false
+      console.log('清除表单数据成功')
+      this.init()// 刷新列表
     },
 
     editChapter(chapterId){
@@ -184,7 +227,7 @@ export default {
       }).then(() => {
         return chapterApi.deleteById(chapterId)
       }).then(() => {
-        this.fetchChapterNestedListByCourseId()// 刷新列表
+        this.init()// 刷新列表
         this.$message({
           type: 'success',
           message: '删除成功!'
@@ -204,9 +247,115 @@ export default {
       })
     },
 
-    fetchChapterNestedListByCourseId() {
-      chapter.getChapterAndVideo(this.courseId).then(response => {
-        this.chapterNestedList = response.data.items
+    // fetchChapterNestedListByCourseId() {
+    //   chapter.getChapterAndVideo(this.courseId).then(response => {
+    //     this.chapterNestedList = response.data.items
+    //   })
+    // },
+
+    
+
+    showVideoForm(chapterId){
+      this.video.chapterId = chapterId
+      this.video.courseId = this.courseId
+      this.dialogVideoFormVisible = true
+    },
+
+    saveOrUpdateVideo(){
+      if(this.video.id){
+        //修改小节
+        console.log('准备修改小节')
+        console.log(this.video.id)
+        videoApi.updateVideo(this.video)
+        .then(response => {
+          if(response.success === true){
+            this.$message({
+              type: 'success',
+              message: '修改课时成功'
+            })
+            this.cleanState()
+          }else{
+            this.$message({
+              type: 'info',
+              message: response.message
+            })
+          }
+        })
+        .catch(response => {
+          this.$message({
+              type: 'error',
+              message: '网络异常'
+            })
+        })
+
+      }else{
+        //新建小节
+        console.log('准备新建小节')
+        videoApi.saveVideo(this.video)
+        .then(response => {
+          if(response.success === true){
+            this.$message({
+              type: 'success',
+              message: '添加课时成功'
+            })
+          }else{
+            this.$message({
+              type: 'info',
+              message: response.message
+            })
+          }
+          this.cleanState()
+
+        })
+
+      }
+    },
+
+    editVideo(id){
+      console.log('准备修改,先回显')
+      console.log('videoId=')
+      console.log(id)
+      videoApi.getVideo(id)
+      .then(response => {
+        if(response.success === true){
+          console.log('success')
+          this.video = response.data.item
+          this.dialogVideoFormVisible = true
+        }else{
+          console.log('error')
+          this.$message({
+            type: 'info',
+            message: response.message
+          })
+        }
+      })
+    },
+
+    removeVideo(id){
+      this.$confirm('此操作将永久删除该记录, 是否继续?', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        return videoApi.deleteById(id)
+      }).then(() => {
+        this.init()// 刷新列表
+        this.$message({
+          type: 'success',
+          message: '删除成功!'
+        })
+      }).catch((response) => { // 失败
+        if (response === 'cancel') {
+          this.$message({
+            type: 'info',
+            message: '已取消删除'
+          })
+        } else {
+          this.$message({
+            type: 'error',
+            message: response.message
+          })
+        }
       })
     },
 
