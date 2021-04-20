@@ -10,38 +10,84 @@
       <el-step title="提交审核"/>
     </el-steps>
 
-    <el-form label-width="120px">
+    <div class="ccInfo">
+      <img :src="coursePublish.cover">
+      <div class="main">
+        <h2>{{ coursePublish.title }}</h2>
+        <p class="gray"><span>共{{ coursePublish.lessonNum }}课时</span></p>
+        <p><span>所属分类：{{ coursePublish.subjectParentTitle }} — {{ coursePublish.subjectTitle }}</span></p>
+        <p>课程讲师：{{ coursePublish.teacherName }}</p>
+        <h3 class="red">￥{{ coursePublish.price.toFixed(2) }}</h3>
+      </div>
+    </div>
 
-      <el-form-item>
-        <el-button @click="previous">返回修改</el-button>
-        <el-button :disabled="saveBtnDisabled" type="primary" @click="publish">发布课程</el-button>
-      </el-form-item>
-    </el-form>
+    <div>
+      <el-button @click="previous">返回修改</el-button>
+      <el-button :disabled="saveBtnDisabled" type="primary" @click="publish">发布课程</el-button>
+    </div>
   </div>
 </template>
 
 <script>
-
+import publishApi from '@/api/course/publish'
 export default {
   data() {
     return {
-      saveBtnDisabled: false // 保存按钮是否禁用
+      saveBtnDisabled: false, // 保存按钮是否禁用
+      coursePublish:{},
+      courseId: ''
     }
   },
 
   created() {
     console.log('publish created')
+    //初始化，查询课程数据
+    this.init()
   },
 
   methods: {
+    init(){
+      if(this.$route.params && this.$route.params.id){
+        this.courseId = this.$route.params.id
+        //查询课程信息
+        publishApi.getPublishInfo(this.courseId)
+        .then(response =>{
+          if(response.success === true){
+            this.coursePublish = response.data
+          }else{
+            this.$message({
+              type: 'info',
+              message: response.message
+            })
+          }
+        })
+      }
+    },
+
     previous() {
       console.log('previous')
-      this.$router.push({ path: '/course/chapter/1' })
+      //返回上一页
+      this.$router.push({ path: '/course/chapter/'+this.courseId })
     },
 
     publish() {
       console.log('publish')
-      this.$router.push({ path: '/course/list' })
+      //发布课程
+      publishApi.publish(this.courseId)
+      .then(response =>{
+        if(response.success === true){
+          this.$message({
+            type: 'success',
+            message: '发布成功'
+          })
+        }else{
+          this.$message({
+            type: 'info',
+            message: '服务器异常'
+          })
+        }
+        this.$router.push({ path: '/course/list' })
+      })
     }
   }
 }
